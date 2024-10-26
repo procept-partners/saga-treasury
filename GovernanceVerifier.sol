@@ -1,6 +1,3 @@
-    // SPDX-License-Identifier: MIT
-    pragma solidity ^0.8.0;
-
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
@@ -62,89 +59,39 @@ contract SHLDOwnershipVerifier {
     }
 }
 
+contract AuroraBalancesProof {
+    address public authorizedSigner;
 
-    contract AuroraBalancesProof {
-        address public authorizedSigner;  // Address allowed to sign proofs
-
-        constructor(address _authorizedSigner) {
-            authorizedSigner = _authorizedSigner;
-        }
-
-        // Struct for the proof of balances
-        struct ManaBalancesProof {
-            uint256 mana_balance;                // Governance mana balance
-            uint256 collateral_mana_balance;     // Collateralized governance balance
-            bytes signature;                     // Signature of the authorized signer
-        }
-
-        // Event for emitting balance proofs
-        event BalanceProofGenerated(
-            address indexed account,
-            uint256 mana_balance,
-            uint256 collateral_mana_balance,
-            bytes signature
-        );
-
-        // Generates a proof of mana and collateral balances for NEAR verification
-        function generateManaBalancesProof(
-            address account,
-            uint256 mana_balance,
-            uint256 collateral_mana_balance
-        ) public returns (ManaBalancesProof memory) {
-            require(msg.sender == authorizedSigner, "Only authorized signer can create proofs");
-
-            // Prepare message hash as required by NEAR (combining account and balances)
-            bytes32 messageHash = keccak256(
-                abi.encodePacked(account, mana_balance, collateral_mana_balance)
-            );
-
-            // Generate the signature for the message hash
-            bytes memory signature = _signMessage(messageHash);
-
-            // Emit the proof for off-chain logging and usage
-            emit BalanceProofGenerated(account, mana_balance, collateral_mana_balance, signature);
-
-            // Return the proof as a struct
-            return ManaBalancesProof({
-                mana_balance: mana_balance,
-                collateral_mana_balance: collateral_mana_balance,
-                signature: signature
-            });
-        }
-
-        // Internal function to simulate signing the message (replace with actual signing logic)
-        function _signMessage(bytes32 messageHash) internal view returns (bytes memory) {
-            // NOTE: Replace this placeholder with actual off-chain signing
-            // Example placeholder; in production, this should be handled by a secure oracle or private key storage
-            bytes memory signature = abi.encodePacked(messageHash);
-            return signature;
-        }
+    constructor(address _authorizedSigner) {
+        authorizedSigner = _authorizedSigner;
     }
 
-contract GovernanceData {
-    // Address of the contract on NEAR (used for event filtering)
-    address public nearCounterpart;
-
-    // Event for governance data updates
+    // Event for emitting updated MANA balances for governance tracking
     event GovernanceDataUpdated(
         address indexed holder,
         uint256 manaBalance,
         uint256 manaCollateralBalance,
-        uint256 votingPower
+        uint256 votingPower,
+        uint256 timestamp // Timestamp for tracking the time of update
     );
 
-    constructor(address _nearCounterpart) {
-        nearCounterpart = _nearCounterpart;
+    // Struct for the proof of balances
+    struct ManaBalancesProof {
+        uint256 mana_balance;                // Governance mana balance
+        uint256 collateral_mana_balance;     // Collateralized governance balance
+        bytes signature;                     // Signature of the authorized signer
     }
 
-    // Function to update governance data and emit event
+    // Generates and logs a governance data update
     function updateGovernanceData(
         address holder,
         uint256 manaBalance,
         uint256 manaCollateralBalance,
         uint256 votingPower
     ) external {
+        require(msg.sender == authorizedSigner, "Only authorized signer can update governance data");
+
         // Emit event with updated governance data
-        emit GovernanceDataUpdated(holder, manaBalance, manaCollateralBalance, votingPower);
+        emit GovernanceDataUpdated(holder, manaBalance, manaCollateralBalance, votingPower, block.timestamp);
     }
 }
