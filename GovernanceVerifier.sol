@@ -1,6 +1,47 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
+import "@aurora-is-near/aurora-bridge/AuroraLightClient.sol";
+
+contract SHLDOwnershipReader {
+    address public authorizedSigner;
+    AuroraLightClient public auroraLightClient;
+
+    event OwnershipDataReceived(
+        string nearAccountId,
+        bytes32 tokenHash,
+        uint256 timestamp
+    );
+
+    constructor(address _authorizedSigner, AuroraLightClient _auroraLightClient) {
+        authorizedSigner = _authorizedSigner;
+        auroraLightClient = _auroraLightClient;
+    }
+
+    // Function to receive and verify ownership proof from NEAR
+    function receiveOwnershipProof(
+        bytes memory proof
+    ) public returns (bool) {
+        // Use AuroraLightClient to verify the NEAR proof
+        require(
+            auroraLightClient.verifyProof(proof),
+            "Invalid proof from NEAR"
+        );
+
+        // Decode proof data here (this step depends on the actual proof structure)
+        (string memory nearAccountId, bytes32 tokenHash) = decodeProofData(proof);
+
+        // Emit event with decoded data
+        emit OwnershipDataReceived(nearAccountId, tokenHash, block.timestamp);
+        return true;
+    }
+
+    function decodeProofData(bytes memory proof) internal pure returns (string memory, bytes32) {
+        // Implement the decoding logic according to the proof structure
+    }
+}
+
+
 contract SHLDOwnershipVerifier {
     address public authorizedSigner;
 
@@ -66,13 +107,14 @@ contract AuroraBalancesProof {
         authorizedSigner = _authorizedSigner;
     }
 
-    // Event for emitting updated MANA balances for governance tracking
+    // Event for emitting updated MANA balances for governance tracking, formatted for bridge compatibility
     event GovernanceDataUpdated(
         address indexed holder,
         uint256 manaBalance,
         uint256 manaCollateralBalance,
         uint256 votingPower,
-        uint256 timestamp // Timestamp for tracking the time of update
+        uint256 timestamp,
+        bytes32 proofHash // Hash for verification on the NEAR side
     );
 
     // Struct for the proof of balances
@@ -91,7 +133,10 @@ contract AuroraBalancesProof {
     ) external {
         require(msg.sender == authorizedSigner, "Only authorized signer can update governance data");
 
-        // Emit event with updated governance data
-        emit GovernanceDataUpdated(holder, manaBalance, manaCollateralBalance, votingPower, block.timestamp);
+        // Create a proof hash combining governance data (this hash will be part of the event)
+        bytes32 proofHash = keccak256(abi.encodePacked(holder, manaBalance, manaCollateralBalance, votingPower, block.timestamp));
+
+        // Emit event with updated governance data and proof hash
+        emit GovernanceDataUpdated(holder, manaBalance, manaCollateralBalance, votingPower, block.timestamp, proofHash);
     }
 }
