@@ -105,12 +105,23 @@ contract SHLDOwnershipVerifier {
     }
 }
 
+
+
+
+interface IERC1400 {
+    function balanceOf(address account) external view returns (uint256);
+}
+
+interface IPriceOracle {
+    function getPrice(address token) external view returns (uint256);
+    function getCombinedMarketCap() external view returns (uint256);
+}
+
 contract AuroraBalancesProof {
     address public authorizedSigner;
-
-    constructor(address _authorizedSigner) {
-        authorizedSigner = _authorizedSigner;
-    }
+    address public LAB_CONTRIB;
+    address public FIN_CONTRIB;
+    IPriceOracle public priceOracle;
 
     // Event for emitting updated MANA balances for governance tracking, formatted for bridge compatibility
     event GovernanceDataUpdated(
@@ -122,26 +133,53 @@ contract AuroraBalancesProof {
         bytes32 proofHash // Hash for verification on the NEAR side
     );
 
-    // Struct for the proof of balances
-    struct ManaBalancesProof {
-        uint256 mana_balance;                // Governance mana balance
-        uint256 collateral_mana_balance;     // Collateralized governance balance
-        bytes signature;                     // Signature of the authorized signer
+    constructor(
+        address _authorizedSigner,
+        address _labContrib,
+        address _finContrib,
+        address _priceOracle
+    ) {
+        authorizedSigner = _authorizedSigner;
+        LAB_CONTRIB = _labContrib;
+        FIN_CONTRIB = _finContrib;
+        priceOracle = IPriceOracle(_priceOracle);
     }
 
-    // Generates and logs a governance data update
+    // Function to calculate governance voting power based on token holdings and market conditions
+    function calculateVotingPower(
+        uint256 manaBalance,
+        uint256 manaCollateralBalance
+    ) internal view returns (uint256) {
+        // Step 1: Get current market prices for LAB_CONTRIB and FIN_CONTRIB
+        uint256 labPrice = priceOracle.getPrice(LAB_CONTRIB);
+        uint256 finPrice = priceOracle.getPrice(FIN_CONTRIB);
+
+        // Step 2: Calculate the market value of the user's tokens
+        uint256 labValue = manaBalance * labPrice;
+        uint256 finValue = manaCollateralBalance * finPrice;
+
+        // Step 3: Retrieve the combined market cap of LAB_CONTRIB and FIN_CONTRIB
+        uint256 combinedMarketCap = priceOracle.getCombinedMarketCap();
+
+        // Step 4: Calculate voting power as a percentage of combined market cap
+        return ((labValue + finValue) * 1e18) / combinedMarketCap;
+    }
+
+    // Generates and logs a governance data update, including voting power
     function updateGovernanceData(
         address holder,
         uint256 manaBalance,
-        uint256 manaCollateralBalance,
-        uint256 votingPower
+        uint256 manaCollateralBalance
     ) external {
         require(msg.sender == authorizedSigner, "Only authorized signer can update governance data");
 
-        // Create a proof hash combining governance data (this hash will be part of the event)
+        // Calculate voting power based on provided balances and current market data
+        uint256 votingPower = calculateVotingPower(manaBalance, manaCollateralBalance);
+
+        // Create a proof hash combining governance data for verification
         bytes32 proofHash = keccak256(abi.encodePacked(holder, manaBalance, manaCollateralBalance, votingPower, block.timestamp));
 
-        // Emit event with updated governance data and proof hash
+        // Emit event with updated governance data, including calculated voting power and proof hash
         emit GovernanceDataUpdated(holder, manaBalance, manaCollateralBalance, votingPower, block.timestamp, proofHash);
     }
 }
