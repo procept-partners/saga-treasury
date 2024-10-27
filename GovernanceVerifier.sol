@@ -7,6 +7,7 @@ contract SHLDOwnershipReader {
     address public authorizedSigner;
     AuroraLightClient public auroraLightClient;
 
+    // Event to emit verified ownership data received from NEAR
     event OwnershipDataReceived(
         string nearAccountId,
         bytes32 tokenHash,
@@ -18,29 +19,33 @@ contract SHLDOwnershipReader {
         auroraLightClient = _auroraLightClient;
     }
 
-    // Function to receive and verify ownership proof from NEAR
+    // Function to receive and verify ownership proof from NEAR via the bridge
     function receiveOwnershipProof(
         bytes memory proof
     ) public returns (bool) {
-        // Use AuroraLightClient to verify the NEAR proof
+        // Step 1: Verify the proof using AuroraLightClient to ensure authenticity
         require(
             auroraLightClient.verifyProof(proof),
             "Invalid proof from NEAR"
         );
 
-        // Decode proof data here (this step depends on the actual proof structure)
+        // Step 2: Decode proof data to retrieve ownership details
         (string memory nearAccountId, bytes32 tokenHash) = decodeProofData(proof);
 
-        // Emit event with decoded data
+        // Step 3: Emit an event to make ownership data available on Aurora
         emit OwnershipDataReceived(nearAccountId, tokenHash, block.timestamp);
         return true;
     }
 
+    // Internal function to decode proof data. Adjust this function based on proof structure.
     function decodeProofData(bytes memory proof) internal pure returns (string memory, bytes32) {
-        // Implement the decoding logic according to the proof structure
+        // Assuming the proof data is ABI-encoded with nearAccountId (string) and tokenHash (bytes32)
+        // Modify this logic based on the actual proof structure provided by the bridge
+        (string memory nearAccountId, bytes32 tokenHash) = abi.decode(proof, (string, bytes32));
+
+        return (nearAccountId, tokenHash);
     }
 }
-
 
 contract SHLDOwnershipVerifier {
     address public authorizedSigner;
@@ -140,3 +145,4 @@ contract AuroraBalancesProof {
         emit GovernanceDataUpdated(holder, manaBalance, manaCollateralBalance, votingPower, block.timestamp, proofHash);
     }
 }
+
