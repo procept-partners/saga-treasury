@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-import {FYREToken} from "../Tokens/FYREToken.sol"; // Import the FYRE ERC20 token contract
-import {MANA} from "../Tokens/MANA.sol"; // Import the MANA ERC1400 token contract
+import {FYREToken} from "../Tokens/FYREToken.sol";
+import {MANA} from "../Tokens/MANA.sol";
 import {Ownable} from "lib/openzeppelin-contracts/contracts/access/Ownable.sol";
 
 contract PurchaseMANA is Ownable {

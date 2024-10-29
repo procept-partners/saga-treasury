@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-import {FYREToken} from "../Tokens/FYREToken.sol"; // Import the FYRE ERC20 token contract
+import {FYREToken} from "../Tokens/FYREToken.sol";
 import {Ownable} from "lib/openzeppelin-contracts/contracts/access/Ownable.sol";
 import {IERC20} from "lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 
