@@ -21,7 +21,8 @@ contract DeployPurchaseFYRE is Script {
         uint256 ethToFyreRate = 200; // Initial FYRE per ETH rate
         uint256 wbtcToFyreRate = 150; // Initial FYRE per tBTC rate
 
-        address treasury = 0x944Cd97fCFa1ABCf974455521B787757A7463fdC; // Replace with the actual treasury address
+        address treasury = 0x944Cd97fCFa1ABCf974455521B787757A7463fdC; //Wills Personal Wallet address at the moment to act as a holder
+        vm.startBroadcast();
 
         vm.startBroadcast();
         purchaseFYRE = new PurchaseFYRE(
