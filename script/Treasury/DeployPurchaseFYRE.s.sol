@@ -11,24 +11,26 @@ contract DeployPurchaseFYRE is Script {
 
     function run() external {
         // Replace with deployed token addresses
-        FyreToken fyreToken = FyreToken(0x3db2F4e2F3eFa0e6Aa1DB543041a392b4401b554); // FYRE token address
-        IERC20 usdcToken = IERC20(0x368ebb46aca6b8d0787c96b2b20bd3cc3f2c45f7);       // USDC token address
-        IERC20 wbtcToken = IERC20(0xf4eb217ba2454613b15dbdea6e5f22276410e89e);            // tBTC token address
+        FyreToken fyreToken = FyreToken(
+            0x3db2F4e2F3eFa0e6Aa1DB543041a392b4401b554
+        ); // FYRE token address
+        IERC20 usdcToken = IERC20(0x368ebb46aca6b8d0787c96b2b20bd3cc3f2c45f7); // USDC token address
+        IERC20 wbtcToken = IERC20(0xf4eb217ba2454613b15dbdea6e5f22276410e89e); // tBTC token address
 
         uint256 usdcToFyreRate = 100; // Initial FYRE per USDC rate
-        uint256 ethToFyreRate = 200;  // Initial FYRE per ETH rate
-        uint256 tbtcToFyreRate = 150; // Initial FYRE per tBTC rate
+        uint256 ethToFyreRate = 200; // Initial FYRE per ETH rate
+        uint256 wbtcToFyreRate = 150; // Initial FYRE per tBTC rate
 
-        address treasury = 0xTreasuryAddressHere; // Replace with the actual treasury address
+        address treasury = 0x944Cd97fCFa1ABCf974455521B787757A7463fdC; // Replace with the actual treasury address
 
         vm.startBroadcast();
         purchaseFYRE = new PurchaseFYRE(
             fyreToken,
             usdcToken,
-            tbtcToken,
+            wbtcToken,
             usdcToFyreRate,
             ethToFyreRate,
-            tbtcToFyreRate,
+            wbtcToFyreRate,
             treasury
         );
         vm.stopBroadcast();
