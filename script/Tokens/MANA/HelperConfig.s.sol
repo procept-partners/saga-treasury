@@ -1,18 +1,19 @@
-// File: script/HelperConfig.s.sol
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.20;
+pragma solidity ^0.8.0;
 
 import {Script} from "forge-std/Script.sol";
-import {MockV3Aggregator} from "test/mocks/MockV3Aggregator.sol";
 import {MANA} from "src/Tokens/MANA.sol";
 import {ManaToken} from "src/Tokens/ManaToken.sol";
 
 contract HelperConfig is Script {
     NetworkConfig public activeNetworkConfig;
+    address public owner;
+    address[] public defaultOperators;
+    bytes32[] public defaultPartitions;
 
     uint256 public constant INITIAL_SUPPLY = 10000 * 10 ** 18;
     uint256 public constant DEFAULT_ANVIL_PRIVATE_KEY =
-        0x59c6995e998f97a5a004497d4a9c9f90000000000000000000000000000000000; // Anvil Default Private Key
+        0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80; // Anvil Default Private Key
 
     struct NetworkConfig {
         address manaGovernanceToken;
@@ -21,24 +22,35 @@ contract HelperConfig is Script {
     }
 
     constructor() {
-        if (block.chainid == 11155111) {
-            // Sepolia Network
-            activeNetworkConfig = getSepoliaConfig();
-        } else {
-            // Default to Anvil Config
+        uint256 chainId = block.chainid;
+        if (chainId == 31337) {
+            // Local network (Anvil)
+            owner = 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266; // Anvil's default account
             activeNetworkConfig = getOrCreateAnvilConfig();
+        } else if (chainId == 1313161555) {
+            // Aurora testnet
+            owner = vm.envAddress("OWNER_ADDRESS");
+            activeNetworkConfig = getAuroraTestnetConfig();
+        } else if (chainId == 1313161554) {
+            // Aurora Mainnet
+            owner = vm.envAddress("OWNER_ADDRESS");
+            activeNetworkConfig = getAuroraMainnetConfig();
+        } else {
+            // Default to the environment variable for other networks
+            owner = vm.envAddress("OWNER_ADDRESS");
+            activeNetworkConfig = getDefaultNetworkConfig();
         }
     }
 
-    function getSepoliaConfig()
-        public
-        view
-        returns (NetworkConfig memory sepoliaConfig)
-    {
-        sepoliaConfig = NetworkConfig({
-            manaGovernanceToken: 0x1234, // Sepolia MANA (ERC-1400) Address
-            manaToken: 0x5678, // Sepolia ManaToken (ERC-20) Address
-            deployerKey: vm.envUint("PRIVATE_KEY") // Set PRIVATE_KEY in .env for Sepolia
+    function setDeployedAddresses(
+        address _manaGovernanceToken,
+        address _manaToken,
+        uint256 _deployerKey
+    ) external {
+        activeNetworkConfig = NetworkConfig({
+            manaGovernanceToken: _manaGovernanceToken,
+            manaToken: _manaToken,
+            deployerKey: _deployerKey
         });
     }
 
@@ -50,15 +62,18 @@ contract HelperConfig is Script {
             return activeNetworkConfig;
         }
 
-        // Broadcast transactions for mock contract deployment
+        // Deploy contracts for the local Anvil environment
         vm.startBroadcast();
 
-        // Corrected contract instantiation
-        MANA manaGovernanceToken = new MANA(); // Initialize MANA contract (assuming MANA constructor does not require parameters)
+        MANA manaGovernanceToken = new MANA(
+            defaultOperators,
+            defaultPartitions
+        );
+
         ManaToken manaToken = new ManaToken(
             INITIAL_SUPPLY,
             address(manaGovernanceToken)
-        ); // Mock ERC-20
+        );
 
         vm.stopBroadcast();
 
@@ -67,5 +82,61 @@ contract HelperConfig is Script {
             manaToken: address(manaToken),
             deployerKey: DEFAULT_ANVIL_PRIVATE_KEY
         });
+
+        activeNetworkConfig = anvilConfig;
+    }
+
+    function getAuroraTestnetConfig()
+        public
+        view
+        returns (NetworkConfig memory auroraTestnetConfig)
+    {
+        auroraTestnetConfig = NetworkConfig({
+            manaGovernanceToken: 0x0D8Fb64D13C2076687F73c0Be5B2745F36bf59C3,
+            manaToken: tryEnvAddress("AURORA_TESTNET_MANA_TOKEN"),
+            deployerKey: vm.envUint("PRIVATE_KEY")
+        });
+    }
+
+    function getAuroraMainnetConfig()
+        public
+        view
+        returns (NetworkConfig memory auroraMainnetConfig)
+    {
+        auroraMainnetConfig = NetworkConfig({
+            manaGovernanceToken: tryEnvAddress(
+                "AURORA_MAINNET_MANA_GOVERNANCE_TOKEN"
+            ),
+            manaToken: tryEnvAddress("AURORA_MAINNET_MANA_TOKEN"),
+            deployerKey: vm.envUint("PRIVATE_KEY")
+        });
+    }
+
+    function getDefaultNetworkConfig()
+        internal
+        view
+        returns (NetworkConfig memory defaultConfig)
+    {
+        defaultConfig = NetworkConfig({
+            manaGovernanceToken: address(0),
+            manaToken: address(0),
+            deployerKey: vm.envUint("PRIVATE_KEY")
+        });
+    }
+
+    function tryEnvAddress(string memory key) internal view returns (address) {
+        try vm.envAddress(key) returns (address result) {
+            return result;
+        } catch {
+            return address(0);
+        }
+    }
+
+    function getActiveNetworkConfig()
+        external
+        view
+        returns (NetworkConfig memory)
+    {
+        return activeNetworkConfig;
     }
 }
