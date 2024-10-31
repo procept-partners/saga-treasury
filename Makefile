@@ -1,117 +1,77 @@
 -include .env
 
-.PHONY: build test deploy-local-tokens deploy-testnet-tokens deploy-local-treasury deploy-testnet-treasury deploy-all-local deploy-all-testnet clean install format
+.PHONY: help clean build deploy-all-local deploy-all-aurora deploy-fyre-local deploy-fyre-aurora deploy-mana-local deploy-mana-aurora deploy-manatoken-local deploy-manatoken-aurora deploy-treasury-local deploy-treasury-aurora transfer-ownership-local transfer-ownership-aurora
 
-# Build all contracts
-build:
-	forge build
+# Default Network Arguments for Local Deployment
+LOCAL_NETWORK_ARGS := --rpc-url http://localhost:8545 --private-key $(LOCAL_PRIVATE_KEY) --broadcast -vvvv
 
-# Run all tests
-test:
-	forge test
+# Network Arguments for Aurora Testnet Deployment
+AURORA_NETWORK_ARGS := --rpc-url $(AURORA_TESTNET_RPC_URL) --private-key $(PRIVATE_KEY) --broadcast -vvvv
 
-# ========================
-# Tokens Deployment
-# ========================
+help:
+	@echo "Available commands for local and Aurora testnet deployment:"
+	@echo "Local deployment:"
+	@echo "  make deploy-all-local           Deploy all contracts and transfer ownership locally"
+	@echo "  make deploy-fyre-local          Deploy FyreToken contract locally"
+	@echo "  make deploy-mana-local          Deploy MANA contract locally"
+	@echo "  make deploy-manatoken-local     Deploy ManaToken contract locally"
+	@echo "  make deploy-treasury-local      Deploy Treasury contract locally"
+	@echo "  make transfer-ownership-local   Transfer token ownership to Treasury locally"
+	@echo ""
+	@echo "Aurora testnet deployment:"
+	@echo "  make deploy-all-aurora          Deploy all contracts and transfer ownership on Aurora testnet"
+	@echo "  make deploy-fyre-aurora         Deploy FyreToken contract on Aurora testnet"
+	@echo "  make deploy-mana-aurora         Deploy MANA contract on Aurora testnet"
+	@echo "  make deploy-manatoken-aurora    Deploy ManaToken contract on Aurora testnet"
+	@echo "  make deploy-treasury-aurora     Deploy Treasury contract on Aurora testnet"
+	@echo "  make transfer-ownership-aurora  Transfer token ownership to Treasury on Aurora testnet"
 
-# Deploy MANA Governance Token to local network (e.g., Anvil)
-deploy-local-mana:
-	@forge script script/DeployMANA.s.sol:DeployMANA --rpc-url http://127.0.0.1:8545 --broadcast --private-key $(LOCAL_PRIVATE_KEY) --legacy
+# Clean and Build Commands
+clean:; forge clean
+build:; forge build
 
-# Deploy ManaToken to local network (e.g., Anvil)
-deploy-local-manatoken:
-	@forge script script/DeployManaToken.s.sol:DeployManaToken --rpc-url http://127.0.0.1:8545 --broadcast --private-key $(LOCAL_PRIVATE_KEY) --legacy
+# Local Deployment Targets
+deploy-fyre-local:
+	@echo "Deploying FyreToken contract locally..."
+	@forge script script/Tokens/FYRE/DeployFYREToken.s.sol $(LOCAL_NETWORK_ARGS)
 
-# Deploy FyreToken to local network (e.g., Anvil)
-deploy-local-fyre:
-	@forge script script/DeployFyreToken.s.sol:DeployFyreToken --rpc-url http://127.0.0.1:8545 --broadcast --private-key $(LOCAL_PRIVATE_KEY) --legacy
+deploy-mana-local:
+	@echo "Deploying MANA governance token locally..."
+	@forge script script/Tokens/MANA/DeployMANA.s.sol $(LOCAL_NETWORK_ARGS)
 
-# Deploy all Tokens contracts locally in correct order
-deploy-local-tokens: deploy-local-mana deploy-local-manatoken deploy-local-fyre
+deploy-manatoken-local:
+	@echo "Deploying ManaToken contract locally..."
+	@forge script script/Tokens/MANA/DeploymanaToken.s.sol $(LOCAL_NETWORK_ARGS)
 
-# Deploy MANA Governance Token to Aurora Testnet
-deploy-testnet-mana:
-	@forge script script/DeployMANA.s.sol:DeployMANA --rpc-url $(AURORA_TESTNET_RPC_URL) --broadcast --private-key $(PRIVATE_KEY) --legacy
+deploy-treasury-local:
+	@echo "Deploying Treasury contract locally..."
+	@forge script script/Treasury/DeployTreasury.s.sol $(LOCAL_NETWORK_ARGS)
 
-# Deploy ManaToken to Aurora Testnet
-deploy-testnet-manatoken:
-	@forge script script/DeployManaToken.s.sol:DeployManaToken --rpc-url $(AURORA_TESTNET_RPC_URL) --broadcast --private-key $(PRIVATE_KEY) --legacy
+transfer-ownership-local:
+	@echo "Transferring ownership of tokens to Treasury locally..."
+	@forge script script/Treasury/DeployOwner.s.sol $(LOCAL_NETWORK_ARGS)
 
-# Deploy FyreToken to Aurora Testnet
-deploy-testnet-fyre:
-	@forge script script/DeployFyreToken.s.sol:DeployFyreToken --rpc-url $(AURORA_TESTNET_RPC_URL) --broadcast --private-key $(PRIVATE_KEY) --legacy
+deploy-all-local: deploy-fyre-local deploy-mana-local deploy-manatoken-local deploy-treasury-local transfer-ownership-local
 
-# Deploy all Tokens contracts to Aurora Testnet in correct order
-deploy-testnet-tokens: deploy-testnet-mana deploy-testnet-manatoken deploy-testnet-fyre
+# Aurora Testnet Deployment Targets
+deploy-fyre-aurora:
+	@echo "Deploying FyreToken contract on Aurora testnet..."
+	@forge script script/Tokens/FYRE/DeployFYREToken.s.sol $(AURORA_NETWORK_ARGS)
 
-# ========================
-# Treasury Deployment
-# ========================
+deploy-mana-aurora:
+	@echo "Deploying MANA governance token on Aurora testnet..."
+	@forge script script/Tokens/MANA/DeployMANA.s.sol $(AURORA_NETWORK_ARGS)
 
-# Deploy PurchaseSHLDProxy to local network
-deploy-local-shld-proxy:
-	@forge script script/deploy_PurchaseSHLDProxy.sol:DeployPurchaseSHLDProxy --rpc-url http://127.0.0.1:8545 --broadcast --private-key $(LOCAL_PRIVATE_KEY) --legacy
+deploy-manatoken-aurora:
+	@echo "Deploying ManaToken contract on Aurora testnet..."
+	@forge script script/Tokens/MANA/DeploymanaToken.s.sol $(AURORA_NETWORK_ARGS)
 
-# Deploy PurchaseMANA to local network
-deploy-local-mana-treasury:
-	@forge script script/deploy_PurchaseMANA.sol:DeployPurchaseMANA --rpc-url http://127.0.0.1:8545 --broadcast --private-key $(LOCAL_PRIVATE_KEY) --legacy
+deploy-treasury-aurora:
+	@echo "Deploying Treasury contract on Aurora testnet..."
+	@forge script script/Treasury/DeployTreasury.s.sol $(AURORA_NETWORK_ARGS)
 
-# Deploy PurchaseFYRE to local network
-deploy-local-fyre-treasury:
-	@forge script script/deploy_PurchaseFYRE.sol:DeployPurchaseFYRE --rpc-url http://127.0.0.1:8545 --broadcast --private-key $(LOCAL_PRIVATE_KEY) --legacy
+transfer-ownership-aurora:
+	@echo "Transferring ownership of tokens to Treasury on Aurora testnet..."
+	@forge script script/Treasury/DeployOwner.s.sol $(AURORA_NETWORK_ARGS)
 
-# Deploy ManaBalanceVerifier to local network
-deploy-local-mana-balance:
-	@forge script script/deploy_ManaBalanceVerifier.sol:DeployManaBalanceVerifier --rpc-url http://127.0.0.1:8545 --broadcast --private-key $(LOCAL_PRIVATE_KEY) --legacy
-
-# Deploy GenesisPriceOracle to local network
-deploy-local-genesis-price-oracle:
-	@forge script script/deploy_GenesisPriceOracle.sol:DeployGenesisPriceOracle --rpc-url http://127.0.0.1:8545 --broadcast --private-key $(LOCAL_PRIVATE_KEY) --legacy
-
-# Deploy all Treasury contracts locally in the correct order
-deploy-local-treasury: deploy-local-shld-proxy deploy-local-mana-treasury deploy-local-fyre-treasury deploy-local-mana-balance deploy-local-genesis-price-oracle
-
-# Deploy PurchaseSHLDProxy to Aurora Testnet
-deploy-testnet-shld-proxy:
-	@forge script script/deploy_PurchaseSHLDProxy.sol:DeployPurchaseSHLDProxy --rpc-url $(AURORA_TESTNET_RPC_URL) --broadcast --private-key $(PRIVATE_KEY) --legacy
-
-# Deploy PurchaseMANA to Aurora Testnet
-deploy-testnet-mana-treasury:
-	@forge script script/deploy_PurchaseMANA.sol:DeployPurchaseMANA --rpc-url $(AURORA_TESTNET_RPC_URL) --broadcast --private-key $(PRIVATE_KEY) --legacy
-
-# Deploy PurchaseFYRE to Aurora Testnet
-deploy-testnet-fyre-treasury:
-	@forge script script/deploy_PurchaseFYRE.sol:DeployPurchaseFYRE --rpc-url $(AURORA_TESTNET_RPC_URL) --broadcast --private-key $(PRIVATE_KEY) --legacy
-
-# Deploy ManaBalanceVerifier to Aurora Testnet
-deploy-testnet-mana-balance:
-	@forge script script/deploy_ManaBalanceVerifier.sol:DeployManaBalanceVerifier --rpc-url $(AURORA_TESTNET_RPC_URL) --broadcast --private-key $(PRIVATE_KEY) --legacy
-
-# Deploy GenesisPriceOracle to Aurora Testnet
-deploy-testnet-genesis-price-oracle:
-	@forge script script/deploy_GenesisPriceOracle.sol:DeployGenesisPriceOracle --rpc-url $(AURORA_TESTNET_RPC_URL) --broadcast --private-key $(PRIVATE_KEY) --legacy
-
-# Deploy all Treasury contracts to Aurora Testnet in the correct order
-deploy-testnet-treasury: deploy-testnet-shld-proxy deploy-testnet-mana-treasury deploy-testnet-fyre-treasury deploy-testnet-mana-balance deploy-testnet-genesis-price-oracle
-
-# ========================
-# Combined Deployment
-# ========================
-
-# Deploy all contracts locally (Tokens and Treasury)
-deploy-all-local: deploy-local-tokens deploy-local-treasury
-
-# Deploy all contracts to Aurora Testnet (Tokens and Treasury)
-deploy-all-testnet: deploy-testnet-tokens deploy-testnet-treasury
-
-# Clean build artifacts
-clean:
-	forge clean
-
-# Install dependencies
-install:
-	forge install foundry-rs/forge-std
-
-# Format Solidity files
-format:
-	forge fmt
+deploy-all-aurora: deploy-fyre-aurora deploy-mana-aurora deploy-manatoken-aurora deploy-treasury-aurora transfer-ownership-aurora

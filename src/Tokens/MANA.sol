@@ -6,30 +6,36 @@ import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 
 contract MANA is ERC1400 {
     using Math for uint256;
+    address public treasury;
 
     mapping(address => uint256) public governanceVotes;
     mapping(uint256 => mapping(address => uint256)) public governanceProposals;
     event GovernanceVoteAllocated(address indexed voter, uint256 amount);
 
     constructor(
-        address[] memory defaultOperators,
+        address _treasury,
         bytes32[] memory defaultPartitions
-    ) ERC1400("Collateralized MANA", "MANA", defaultPartitions) {}
+    ) ERC1400("Collateralized MANA", "MANA", defaultPartitions) {
+        treasury = _treasury;
+    }
+
+    modifier onlyTreasury() {
+        require(msg.sender == treasury, "Only Treasury can call this function");
+        _;
+    }
 
     function mint(
         address to,
         uint256 amount,
         bytes32 partition
-    ) external onlyOwner {
-        address operator = msg.sender;
-        _issue(operator, to, amount, partition);
+    ) external onlyTreasury {
+        _issue(msg.sender, to, amount, partition);
     }
 
-    // Allocate governance votes
     function allocateGovernanceVotes(
         address voter,
         uint256 amount
-    ) external onlyOwner {
+    ) external onlyTreasury {
         require(
             this.balanceOf(voter) >= amount,
             "Insufficient Governance MANA"
@@ -38,7 +44,6 @@ contract MANA is ERC1400 {
         emit GovernanceVoteAllocated(voter, amount);
     }
 
-    // Function to vote for governance proposals
     function voteForGovernance(uint256 proposalId, uint256 amount) external {
         require(
             governanceVotes[msg.sender] >= amount,
@@ -48,7 +53,6 @@ contract MANA is ERC1400 {
         governanceProposals[proposalId][msg.sender] += amount;
     }
 
-    // View governance votes for a specific proposal
     function viewGovernanceVotes(
         uint256 proposalId,
         address voter
