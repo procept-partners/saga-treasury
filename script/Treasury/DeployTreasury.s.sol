@@ -1,30 +1,25 @@
-// File: script/Treasury/DeployTreasury.s.sol
+// File: script/DeployTreasury.s.sol
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
 import {Script} from "forge-std/Script.sol";
 import {Treasury} from "src/Treasury/Treasury.sol";
-import {HelperConfigTreasury} from "./HelperConfigTreasury.s.sol";
-import {FYREToken} from "src/Tokens/FYREToken.sol";
-import {MANA} from "src/Tokens/MANA.sol";
-import {ManaToken} from "src/Tokens/ManaToken.sol";
+import {console} from "forge-std/console.sol";
+import {HelperConfig} from "script/HelperConfig.s.sol";
 
 contract DeployTreasury is Script {
     Treasury public treasury;
 
     function run() external {
-        HelperConfigTreasury helperConfig = new HelperConfigTreasury();
-        HelperConfigTreasury.NetworkConfig memory config = helperConfig
-            .activeNetworkConfig;
+        HelperConfig helperConfig = new HelperConfig();
+        uint256 deployerKey = helperConfig.activeNetworkConfig.deployerKey;
 
-        vm.startBroadcast(config.deployerKey);
-
-        // Deploy Treasury with token addresses and configuration parameters
+        vm.startBroadcast(deployerKey);
         treasury = new Treasury(
-            config.fyreTokenAddress,
-            config.manaTokenAddress,
-            address(0), // Placeholder for USDC address
-            address(0), // Placeholder for WBTC address
+            helperConfig.activeNetworkConfig.fyreTokenAddress,
+            helperConfig.activeNetworkConfig.manaTokenAddress,
+            address(0), // USDC placeholder
+            address(0), // WBTC placeholder
             address(this), // Authorized signer
             100, // usdcToFyreRate
             1000, // ethToFyreRate
@@ -32,7 +27,14 @@ contract DeployTreasury is Script {
             5, // fyreToManaRate
             2 // fyreToShldRate
         );
-
+        helperConfig.setDeployedAddresses(
+            helperConfig.activeNetworkConfig.fyreTokenAddress,
+            helperConfig.activeNetworkConfig.manaTokenAddress,
+            address(treasury),
+            deployerKey
+        );
         vm.stopBroadcast();
+
+        console.log("Treasury deployed at:", address(treasury));
     }
 }

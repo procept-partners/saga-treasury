@@ -1,24 +1,37 @@
-// File: script/FYRE/DeployFyreToken.s.sol
+// File: script/DeployFyreToken.s.sol
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-import {Script} from "lib/forge-std/src/Script.sol";
+import {Script} from "forge-std/Script.sol";
 import {FYREToken} from "src/Tokens/FYREToken.sol";
-import {console} from "lib/forge-std/src/console.sol";
-import {HelperConfigFYRE} from "./HelperConfigFYRE.s.sol";
+import {console} from "forge-std/console.sol";
+import {HelperConfig} from "script/HelperConfig.s.sol";
 
 contract DeployFyreToken is Script {
     FYREToken public fyreToken;
 
     function run() external {
-        HelperConfigFYRE helperConfig = new HelperConfigFYRE();
-        address deployer = helperConfig.owner();
+        HelperConfig helperConfig = new HelperConfig();
+        address deployerAddress = helperConfig.owner(); // Owner address
         uint256 initialSupply = 250_000 ether;
 
-        vm.startBroadcast(deployer);
-        fyreToken = new FYREToken(deployer, initialSupply); // Deploy without treasury for now
+        uint256 chainId = block.chainid;
+        uint256 deployerPrivateKey = helperConfig
+            .getNetworkConfig(chainId)
+            .deployerKey;
+
+        vm.startBroadcast(deployerPrivateKey); // Pass private key instead of address
+        fyreToken = new FYREToken(deployerAddress, initialSupply);
+
+        helperConfig.setDeployedAddresses(
+            address(fyreToken),
+            address(0), // Placeholder for other token addresses
+            address(0), // Placeholder for other addresses
+            deployerPrivateKey // Store private key in config
+        );
+
         vm.stopBroadcast();
 
-        console.log("Deployed FyreToken at:", address(fyreToken));
+        console.log("Deployed FYREToken at:", address(fyreToken));
     }
 }
