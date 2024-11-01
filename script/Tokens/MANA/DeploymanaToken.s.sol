@@ -1,4 +1,3 @@
-// File: script/DeployManaToken.s.sol
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
@@ -12,21 +11,17 @@ contract DeployManaToken is Script {
 
     function run() external {
         HelperConfig helperConfig = new HelperConfig();
-        uint256 deployerKey = helperConfig.activeNetworkConfig.deployerKey;
+        uint256 deployerKey = helperConfig.getDeployerKey();
+        address manaTokenAddress = helperConfig
+            .activeNetworkConfig
+            .manaTokenAddress;
 
         vm.startBroadcast(deployerKey);
-        manaToken = new ManaToken(
-            1000 * 10 ** 18,
-            helperConfig.activeNetworkConfig.manaTokenAddress
-        );
-        helperConfig.setDeployedAddresses(
-            helperConfig.activeNetworkConfig.fyreTokenAddress,
-            address(manaToken),
-            address(0),
-            deployerKey
-        );
-        vm.stopBroadcast();
 
-        console.log("ManaToken deployed to:", address(manaToken));
+        manaToken = new ManaToken(1000 * 10 ** 18, manaTokenAddress);
+        helperConfig.setDeployedManaTokenAddress(address(manaToken));
+
+        vm.stopBroadcast();
+        console.log("ManaToken deployed at:", address(manaToken));
     }
 }

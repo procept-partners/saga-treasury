@@ -1,4 +1,3 @@
-// File: script/TransferOwnershipToTreasury.s.sol
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
@@ -18,14 +17,15 @@ contract TransferOwnershipToTreasury is Script {
             .treasuryAddress;
 
         vm.startBroadcast(deployerKey);
+
         FYREToken(helperConfig.activeNetworkConfig.fyreTokenAddress)
             .transferOwnership(treasuryAddress);
         MANA(helperConfig.activeNetworkConfig.manaTokenAddress)
             .transferOwnership(treasuryAddress);
         ManaToken(helperConfig.activeNetworkConfig.manaTokenAddress)
             .transferOwnership(treasuryAddress);
-        vm.stopBroadcast();
 
+        vm.stopBroadcast();
         console.log(
             "Ownership of all tokens transferred to Treasury at:",
             treasuryAddress

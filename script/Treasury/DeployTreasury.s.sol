@@ -1,4 +1,3 @@
-// File: script/DeployTreasury.s.sol
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
@@ -14,10 +13,18 @@ contract DeployTreasury is Script {
         HelperConfig helperConfig = new HelperConfig();
         uint256 deployerKey = helperConfig.activeNetworkConfig.deployerKey;
 
+        address fyreTokenAddress = helperConfig
+            .activeNetworkConfig
+            .fyreTokenAddress;
+        address manaTokenAddress = helperConfig
+            .activeNetworkConfig
+            .manaTokenAddress;
+
         vm.startBroadcast(deployerKey);
+
         treasury = new Treasury(
-            helperConfig.activeNetworkConfig.fyreTokenAddress,
-            helperConfig.activeNetworkConfig.manaTokenAddress,
+            fyreTokenAddress,
+            manaTokenAddress,
             address(0), // USDC placeholder
             address(0), // WBTC placeholder
             address(this), // Authorized signer
@@ -27,14 +34,9 @@ contract DeployTreasury is Script {
             5, // fyreToManaRate
             2 // fyreToShldRate
         );
-        helperConfig.setDeployedAddresses(
-            helperConfig.activeNetworkConfig.fyreTokenAddress,
-            helperConfig.activeNetworkConfig.manaTokenAddress,
-            address(treasury),
-            deployerKey
-        );
-        vm.stopBroadcast();
+        helperConfig.setDeployedTreasuryAddress(address(treasury));
 
+        vm.stopBroadcast();
         console.log("Treasury deployed at:", address(treasury));
     }
 }

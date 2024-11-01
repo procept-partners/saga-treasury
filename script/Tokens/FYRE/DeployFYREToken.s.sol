@@ -1,4 +1,3 @@
-// File: script/DeployFyreToken.s.sol
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
@@ -12,7 +11,7 @@ contract DeployFyreToken is Script {
 
     function run() external {
         HelperConfig helperConfig = new HelperConfig();
-        address deployerAddress = helperConfig.owner(); // Owner address
+        address deployerAddress = helperConfig.owner();
         uint256 initialSupply = 250_000 ether;
 
         uint256 chainId = block.chainid;
@@ -20,18 +19,12 @@ contract DeployFyreToken is Script {
             .getNetworkConfig(chainId)
             .deployerKey;
 
-        vm.startBroadcast(deployerPrivateKey); // Pass private key instead of address
-        fyreToken = new FYREToken(deployerAddress, initialSupply);
+        vm.startBroadcast(deployerPrivateKey);
 
-        helperConfig.setDeployedAddresses(
-            address(fyreToken),
-            address(0), // Placeholder for other token addresses
-            address(0), // Placeholder for other addresses
-            deployerPrivateKey // Store private key in config
-        );
+        fyreToken = new FYREToken(deployerAddress, initialSupply);
+        helperConfig.setDeployedFYRETokenAddress(address(fyreToken));
 
         vm.stopBroadcast();
-
         console.log("Deployed FYREToken at:", address(fyreToken));
     }
 }
