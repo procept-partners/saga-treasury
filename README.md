@@ -100,11 +100,7 @@ The following steps guide you through deploying each contract in the correct ord
 
 # Project Deployment and Testing Instructions
 
-## Local Deployment
-
 ## Deploying Contracts
-
-### Local Deployment
 
 To deploy contracts locally, use the following `make` commands:
 
@@ -115,31 +111,38 @@ make deploy-manatoken-local
 make deploy-treasury-local
 make transfer-ownership-local
 make deploy-all-aurora
+```
 Deploy FYREToken on Aurora Testnet:
 
-bash
+```bash
 make deploy-fyre-aurora
+```
 Deploy MANA on Aurora Testnet:
 
-bash
+```bash
 make deploy-mana-aurora
+```
 Deploy ManaToken on Aurora Testnet:
 
-bash
+```bash
 make deploy-manatoken-aurora
+```
 Deploy Treasury on Aurora Testnet:
 
-bash
+```bash
 make deploy-treasury-aurora
+```
 Transfer ownership of all tokens to Treasury on Aurora Testnet:
 
-bash
+```bash
 make transfer-ownership-aurora
+```
 Testing
 Run the following command to compile and test the contracts:
 
-bash
+```bash
 forge test
+```
 License
 This project is licensed under the MIT License. See the LICENSE file for details.
 
@@ -151,4 +154,3 @@ Detailed instructions on using make commands for deployments.
 Clear organization of contract functions, deployment steps, and testing instructions.
 
 Suitable formatting for readability in a hackathon or professional setting.
-```
