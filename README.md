@@ -110,7 +110,6 @@ make deploy-mana-local
 make deploy-manatoken-local
 make deploy-treasury-local
 make transfer-ownership-local
-make deploy-all-aurora
 ```
 Deploy FYREToken on Aurora Testnet:
 
