@@ -1,101 +1,107 @@
-# Mana Token and MANA Token Contracts
 
-## Overview
+# Saga Treasury
 
-This repository contains the smart contracts for the Mana Token and MANA Governance Token as part of the SagaHalla cooperative project. The Mana Token is an ERC-20 token used for project-based voting, while the MANA Governance Token is an ERC-1400 token that provides governance rights within the cooperative structure.
+Saga Treasury is a smart contract project that manages treasury functions and token operations using the ERC-1400 standard. This project includes various deployment scripts, token contracts, and the main treasury contract.
 
-## Key Features
-* __Mana Token (mana)__
-  * __Uncollateralized__
-  * __Contributions to Cooperative__: Users can burn Mana tokens to receive collateralized MANA tokens.
-  * __Transferable__: Freely transferable among users.
-  * __Minting & Burning__: The contract owner can mint new tokens, and users can burn their own tokens.
+## Project Structure
 
-* __MANA Governance Token (ERC-1400)__
-  * __Collateralized__
-  * __Restricted Transferability__: Only transfer between allowed parties.
-  * __Minting__: Only the contract owner can mint new governance tokens.
-  * __Governance Rights__ : Provides governance voting rights proportional to the amount of MANA tokens held, with votes authenticated by the SHLD tokens.
-  * __Use Case__: Governance participation, allowing cooperative members to vote on proposals.
-
-
-## Contract Architecture
-# Mana Token and MANA Governance Token Contracts
-
-## 1. Mana Token (ERC-20)
-**File**: `ManaToken.sol`
-
-### Constructor
-- **Parameters**:
-  - `initialSupply`: The initial amount of tokens minted for the deployer.
-  -  `manaAddress` : The deployed address of Governance MANA token for conversion of ERC20 --> ERC1400
-
-### Key Functions
-- **mint(address to, uint256 amount)**: Allows the contract owner to mint new tokens and assign them to a specified address.
-- **contributeToCooperative(uint256 amount)**: Burns the specified amount of Mana tokens from the sender's balance and mints equivalent MANA tokens (using the ERC-1400 contract).
-- **burn(uint256 amount)**: Allows users to burn (destroy) their own tokens.
-t.
-
-## 2. MANA Governance Token (ERC-1400)
-**File**: `MANA.sol`
-
-### Constructor
-- **Parameters**:
-  - `defaultOperators`: An array of addresses that are allowed to manage tokens on behalf of users.
-  - `defaultPartitions`: The partitions (categories) into which the tokens are divided.
-
-### Key Functions
-- **mint(address to, uint256 amount)**: Allows the contract owner to mint new governance tokens.
-- **allocateGovernanceVotes(address voter, uint256 amount)**: Allocates governance votes to a user based on their token balance.
-- **voteForGovernance(uint256 proposalId, uint256 amount)**: Allows users to cast votes for governance proposals based on their governance token holdings.
-- **viewGovernanceVotes(uint256 proposalId, address voter)**: Allows users to check how many votes they have cast for a specific governance proposal.
-
-
-# Deployment
-
-## Setting up the Environment variable
-* Create a `.env` file in the root directory with the following content:
-```bash
-PRIVATE_KEY=your_private_key_here
+```plaintext
+.
+├── foundry.toml                 # Foundry configuration file
+├── lib
+│   ├── forge-std                # Standard Forge library for Solidity tests
+│   └── openzeppelin-contracts   # OpenZeppelin contracts for ERC standards
+├── Makefile                     # Makefile for automating tasks
+├── README.md                    # Project documentation
+├── script                       # Deployment and helper scripts
+│   ├── HelperConfig.s.sol       # Configuration script
+│   ├── Tokens                   # Token-related scripts
+│   │   ├── FYRE                 # FYRE Token deployment scripts
+│   │   └── MANA                 # MANA Token deployment scripts
+│   └── Treasury                 # Treasury deployment scripts
+│       ├── DeployOwnershipToTreasury.s.sol
+│       └── DeployTreasury.s.sol
+└── src                          # Core contract sources
+    ├── Tokens                   # Token contracts
+    │   ├── ERC1400              # ERC1400 standard contracts
+    │   ├── FYREToken.sol        # FYRE token contract
+    │   ├── MANA.sol             # MANA token contract
+    │   └── ManaToken.sol        # Additional MANA token implementation
+    └── Treasury                 # Treasury contract
+        └── Treasury.sol         # Core treasury contract
 ```
 
+## Getting Started
 
-1. Clone the repository
+### Prerequisites
+
+Ensure you have the following tools installed:
+
+- [Foundry](https://github.com/gakonst/foundry) - for smart contract development and testing
+- [Node.js](https://nodejs.org/) - for scripting, if needed for deployment
+- [OpenZeppelin Contracts](https://openzeppelin.com/contracts/) - ERC standard libraries
+
+### Installation
+
+1. Clone the repository:
+   
+   ```bash
+   git clone https://github.com/yourusername/saga-treasury.git
+   cd saga-treasury
+   ```
+
+2. Install dependencies (e.g., OpenZeppelin contracts) if not already included.
+
+### Compiling Contracts
+
+Use Foundry to compile the contracts:
+
 ```bash
-git clone https://github.com/procept-partners/saga-mana-token.git
-cd saga-mana-token
+forge build
 ```
 
-2. Install Dependencies
+### Running Tests
+
+Run tests using Foundry:
+
 ```bash
-npm install
+forge test
 ```
 
-3. Compile the contracts
+### Deployment
+
+Deployment scripts are located in the `script/` directory. Each script is a Solidity script designed to be run with Foundry or custom deployment tools.
+
+Example: Deploy the Treasury contract:
+
 ```bash
-npx hardhat compile
+forge script script/Treasury/DeployTreasury.s.sol --rpc-url <RPC_URL> --private-key <PRIVATE_KEY> --broadcast
 ```
 
-4. Deploy on Aurora
-(for MANA)
-```bash
-npx hardhat run ignition/modules/MANA_deploy.js --network auroraTestnet 
-```
+Replace `<RPC_URL>` and `<PRIVATE_KEY>` with your network RPC URL and private key, respectively.
 
-(for mana)
-```bash
-npx hardhat run ignition/modules/Manatoken_deploy.js --network auroraTestnet 
-```
+## Contracts Overview
 
+### Treasury.sol
 
-## Key Points
-* The ERC1400 was taken from this repository
-[Repository Link](https://github.com/Consensys/UniversalToken)
+The `Treasury.sol` contract is the central contract for managing treasury functions. It holds and manages tokens and includes functions for ownership and fund distribution.
 
-- The full implementation was not stable, so only some parts were used.
+### Tokens
 
-# Testing
-* The contracts can be tested with hardhat using this command
-```bash
-npx hardhat test
-```
+- **FYREToken.sol**: Contract implementing the FYRE token.
+- **MANA.sol**: Contract for MANA token.
+- **ManaToken.sol**: Alternative implementation of the MANA token.
+- **ERC1400**: Contains implementations of ERC-1400 standard token functions.
+
+## Scripts Overview
+
+- **HelperConfig.s.sol**: Configuration script for setting up initial values.
+- **DeployOwnershipToTreasury.s.sol**: Script to transfer ownership to the Treasury.
+- **DeployTreasury.s.sol**: Script to deploy the Treasury contract.
+
+## License
+
+This project is licensed under the terms of the MIT license. See [LICENSE](./LICENSE.txt) for more details.
+
+Note to Redacted Judges: Treasury.sol is the latest development and the central integration point for the frontend.  Integration not yet implemented.
+
