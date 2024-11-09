@@ -64,6 +64,33 @@ contract Treasury is Ownable {
     }
 
     /**
+     * @dev Calculates governance power for a given address based on aggregate mana and MANA holdings.
+     * @param holder The address of the token holder whose governance power is being calculated.
+     * @return Governance power as a percentage of the circulating supply.
+     */
+    function calculateGovernancePower(address holder) public view returns (uint256) {
+        uint256 circulatingMana = manaToken.totalSupply();
+        uint256 circulatingMANA = manaToken.totalSupply(); // Assumes total supply across partitions
+
+        uint256 totalCirculatingSupply = circulatingMana + circulatingMANA;
+
+        uint256 holderManaBalance = manaToken.balanceOf(holder);
+        uint256 holderLaborMANA = manaToken.balanceOfByPartition(holder, manaToken.LABOR_CONTRIBUTION());
+        uint256 holderFinancialMANA = manaToken.balanceOfByPartition(holder, manaToken.FINANCIAL_CONTRIBUTION());
+        uint256 holderTotalMANA = holderLaborMANA + holderFinancialMANA;
+
+        uint256 holderTotalBalance = holderManaBalance + holderTotalMANA;
+
+        if (totalCirculatingSupply == 0) {
+            return 0; // Avoid division by zero
+        }
+        
+        uint256 governancePower = (holderTotalBalance * 1e18) / totalCirculatingSupply;
+
+        return governancePower;
+    }
+
+    /**
      * @dev Purchase FYRE tokens using USDC, based on the latest price from the oracle.
      */
     function purchaseFYREWithUSDC(uint256 usdcAmount) external {
@@ -96,19 +123,19 @@ contract Treasury is Ownable {
     }
 
     /**
-     * @dev Convert ERC20 manaToken to ERC1400 MANA by burning ERC20 and minting ERC1400 in a specific partition.
+     * @dev Converts ERC20 manaToken to ERC1400 MANA by burning ERC20 and minting ERC1400 in the "labor contribution" partition.
+     * No collateralization is involved in this process; it is a simple burn-and-mint to the labor partition.
      */
     function convertManaToMANA(uint256 amount) external {
-        uint256 manaERC20Price = priceOracle.getPrice(address(manaToken), "");
-        uint256 manaLaborPrice = priceOracle.getPrice(address(manaToken), keccak256("labor contribution"));
-        
         require(manaToken.balanceOf(msg.sender) >= amount, "Insufficient ERC20 mana balance");
 
-        uint256 convertedAmount = (amount * manaLaborPrice) / manaERC20Price; // Example conversion logic
+        // Burn the specified amount of mana (ERC-20)
         manaToken.burn(msg.sender, amount);
-        manaToken.mint(msg.sender, convertedAmount, keccak256("labor contribution"));
 
-        emit MANAConversion(msg.sender, amount, convertedAmount);
+        // Mint the equivalent amount of MANA in the "labor contribution" partition
+        manaToken.mint(msg.sender, amount, keccak256("labor contribution"));
+
+        emit MANAConversion(msg.sender, amount);
     }
 
     /**
@@ -156,4 +183,29 @@ contract Treasury is Ownable {
     }
 
     receive() external payable {}
+
+
+
+    /**
+     * @dev Purchase MANA in the financial partition using FYRE.
+     * @param fyreAmount The amount of FYRE tokens provided by the buyer.
+     */
+    function purchaseMANAInFinancialPartition(uint256 fyreAmount) external {
+        uint256 manaFinancialPrice = priceOracle.getPrice(address(manaToken), keccak256("financial contribution"));
+        uint256 fyreToManaRate = priceOracle.getPrice(address(fyreToken), "");
+        
+        // Calculate the amount of MANA to mint based on FYRE provided and the current price
+        uint256 manaAmount = (fyreAmount * fyreToManaRate) / manaFinancialPrice;
+
+        // Ensure the user has enough FYRE
+        require(fyreToken.balanceOf(msg.sender) >= fyreAmount, "Insufficient FYRE balance");
+
+        // Transfer FYRE from the buyer to the treasury as collateral
+        fyreToken.transferFrom(msg.sender, address(this), fyreAmount);
+
+        // Mint MANA in the financial partition to the buyer
+        manaToken.mint(msg.sender, manaAmount, keccak256("financial contribution"));
+
+        emit MANAConversion(msg.sender, fyreAmount, manaAmount);
+    }
 }
