@@ -26,7 +26,7 @@ contract GenesisPriceOracle is IPriceOracle, Ownable {
     uint256 public combinedMarketCap;
 
     // Event to track price updates
-    event TokenPriceUpdated(address indexed token, bytes32 partition, uint256 newPrice);
+    event TokenPriceUpdated(address indexed token, bytes32 indexed partition, uint256 newPrice);
 
     constructor(
         address _fyre,
@@ -62,7 +62,7 @@ contract GenesisPriceOracle is IPriceOracle, Ownable {
             return manaERC20Price;
         } else if (token == MANA) {
             require(
-                partition == LABOR_CONTRIBUTION || partition == FINANCIAL_CONTRIBUTION,
+                isValidPartition(partition),
                 "Invalid partition"
             );
             return manaPartitionPrices[partition];
@@ -82,24 +82,36 @@ contract GenesisPriceOracle is IPriceOracle, Ownable {
      * @dev Update the price of a specific token. For MANA, specify the partition.
      */
     function updateTokenPrice(address token, bytes32 partition, uint256 newPrice) external onlyOwner {
+        uint256 oldPrice;
+
         if (token == FYRE) {
-            combinedMarketCap = combinedMarketCap - fyrePrice + newPrice;
+            oldPrice = fyrePrice;
             fyrePrice = newPrice;
-            emit TokenPriceUpdated(token, "", newPrice);
+            emit TokenPriceUpdated(token, bytes32(0), newPrice);
         } else if (token == manaERC20) {
-            combinedMarketCap = combinedMarketCap - manaERC20Price + newPrice;
+            oldPrice = manaERC20Price;
             manaERC20Price = newPrice;
-            emit TokenPriceUpdated(token, "", newPrice);
+            emit TokenPriceUpdated(token, bytes32(0), newPrice);
         } else if (token == MANA) {
             require(
-                partition == LABOR_CONTRIBUTION || partition == FINANCIAL_CONTRIBUTION,
+                isValidPartition(partition),
                 "Invalid partition"
             );
-            combinedMarketCap = combinedMarketCap - manaPartitionPrices[partition] + newPrice;
+            oldPrice = manaPartitionPrices[partition];
             manaPartitionPrices[partition] = newPrice;
             emit TokenPriceUpdated(token, partition, newPrice);
         } else {
             revert("Token not supported");
         }
+
+        // Update combined market cap
+        combinedMarketCap = combinedMarketCap - oldPrice + newPrice;
+    }
+
+    /**
+     * @dev Checks if a partition is valid.
+     */
+    function isValidPartition(bytes32 partition) internal pure returns (bool) {
+        return (partition == LABOR_CONTRIBUTION || partition == FINANCIAL_CONTRIBUTION);
     }
 }

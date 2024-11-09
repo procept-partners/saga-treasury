@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-import {FYREToken} from "src/Tokens/FYREToken.sol";
-import {MANA} from "src/Tokens/MANA.sol";
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
-import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
-import {IPriceOracle} from "path/to/GenesisPriceOracle.sol"; // Adjust to actual path of GenesisPriceOracle
+import "../tokens/FYREToken.sol";
+import "../tokens/MANA.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
+import "../treasury/oracle.sol"; // Adjusted for the project structure
 
 contract Treasury is Ownable {
     using ECDSA for bytes32;
@@ -49,7 +49,7 @@ contract Treasury is Ownable {
         IERC20 _usdcToken,
         IERC20 _wbtcToken,
         address _authorizedSigner,
-        address _priceOracle // Address of the deployed GenesisPriceOracle contract
+        address _priceOracle
     ) Ownable() {
         fyreToken = _fyreToken;
         manaToken = _manaToken;
@@ -57,6 +57,10 @@ contract Treasury is Ownable {
         wbtcToken = _wbtcToken;
         authorizedSigner = _authorizedSigner;
         priceOracle = IPriceOracle(_priceOracle);
+
+        // Set Treasury contract as controller for FYREToken and MANA
+        fyreToken.setTreasury(address(this));
+        manaToken.setTreasury(address(this));
     }
 
     /**
