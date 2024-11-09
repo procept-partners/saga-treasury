@@ -6,7 +6,7 @@ import "../tokens/MANA.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
-import "../treasury/price_oracle.sol";
+import "../treasury/oracle.sol";
 
 contract Treasury is Ownable {
     using ECDSA for bytes32;
@@ -15,10 +15,9 @@ contract Treasury is Ownable {
     MANA public manaToken;
     IERC20 public usdcToken;
     IERC20 public wbtcToken;
-    IPriceOracle public priceOracle;           // Oracle for price data
-    address public authorizedSigner;
-    address public collateralVerificationOracle; // Oracle to verify collateral (e.g., BTC backing)
-    address public governanceApprovalOracle;   // Oracle for relaying governance approvals from NEAR
+    IPriceOracle public priceOracle;  // Retained for price data
+    address public authorizedGovernanceSigner;
+    address public authorizedCollateralSigner;
 
     uint256 public purchaseCounter;
 
@@ -40,47 +39,52 @@ contract Treasury is Ownable {
         MANA _manaToken,
         IERC20 _usdcToken,
         IERC20 _wbtcToken,
-        address _authorizedSigner,
         address _priceOracle,
-        address _collateralVerificationOracle,
-        address _governanceApprovalOracle
+        address _authorizedGovernanceSigner,
+        address _authorizedCollateralSigner
     ) Ownable() {
         fyreToken = _fyreToken;
         manaToken = _manaToken;
         usdcToken = _usdcToken;
         wbtcToken = _wbtcToken;
-        authorizedSigner = _authorizedSigner;
         priceOracle = IPriceOracle(_priceOracle);
-        collateralVerificationOracle = _collateralVerificationOracle;
-        governanceApprovalOracle = _governanceApprovalOracle;
+        authorizedGovernanceSigner = _authorizedGovernanceSigner;
+        authorizedCollateralSigner = _authorizedCollateralSigner;
 
         fyreToken.setTreasury(address(this));
         manaToken.setTreasury(address(this));
     }
 
     /**
-     * @dev Modifies the governance approval oracle address if necessary, only by owner.
+     * @dev Sets new authorized signers, if needed, only by owner.
      */
-    function setGovernanceApprovalOracle(address _governanceApprovalOracle) external onlyOwner {
-        governanceApprovalOracle = _governanceApprovalOracle;
+    function setAuthorizedSigners(address _governanceSigner, address _collateralSigner) external onlyOwner {
+        authorizedGovernanceSigner = _governanceSigner;
+        authorizedCollateralSigner = _collateralSigner;
     }
 
     /**
-     * @dev Only allows the governance approval oracle to call certain functions.
-     */
-    modifier onlyGovernanceApprovalOracle() {
-        require(msg.sender == governanceApprovalOracle, "Unauthorized source");
-        _;
-    }
-
-    /**
-     * @dev Process project approval relayed from NEAR’s governance contract, allowing for approved FYRE and MANA minting.
-     * This function can only be called by the governance approval oracle.
+     * @dev Process project approval using a signature from the authorized governance signer.
      * @param projectId The ID of the approved project.
-     * @param approvedFYREQuantity Quantity of FYRE to mint based on the project approval.
-     * @param approvedManaQuantity Quantity of MANA to mint based on the project approval.
+     * @param approvedFYREQuantity Quantity of FYRE to mint.
+     * @param approvedManaQuantity Quantity of MANA to mint.
+     * @param signature Signed message verifying the approval from NEAR governance.
      */
-    function processProjectApproval(uint256 projectId, uint256 approvedFYREQuantity, uint256 approvedManaQuantity) external onlyGovernanceApprovalOracle {
+    function processProjectApproval(
+        uint256 projectId,
+        uint256 approvedFYREQuantity,
+        uint256 approvedManaQuantity,
+        bytes memory signature
+    ) external {
+        bytes32 messageHash = keccak256(
+            abi.encodePacked(projectId, approvedFYREQuantity, approvedManaQuantity)
+        ).toEthSignedMessageHash();
+
+        require(
+            messageHash.recover(signature) == authorizedGovernanceSigner,
+            "Invalid signature from governance"
+        );
+
         if (approvedFYREQuantity > 0) {
             fyreToken.mint(address(this), approvedFYREQuantity);
             emit FYREPurchase(address(this), approvedFYREQuantity, "Governance Approved Mint");
@@ -91,6 +95,19 @@ contract Treasury is Ownable {
         }
 
         emit ProjectApprovalReceived(projectId, approvedFYREQuantity, approvedManaQuantity);
+    }
+
+    /**
+     * @dev Verifies collateral with a signature from the authorized collateral signer.
+     * @param collateralAmount The amount of BTC collateral required.
+     * @param signature Signed message verifying the collateral on Verus.
+     */
+    function verifyCollateral(uint256 collateralAmount, bytes memory signature) public view returns (bool) {
+        bytes32 messageHash = keccak256(
+            abi.encodePacked(collateralAmount)
+        ).toEthSignedMessageHash();
+
+        return messageHash.recover(signature) == authorizedCollateralSigner;
     }
 
     /**
