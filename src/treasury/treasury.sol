@@ -111,6 +111,35 @@ contract Treasury is Ownable {
     }
 
     /**
+     * @dev Allows users to purchase FYRE from the Treasury using USDC or WBTC.
+     * @param paymentToken Address of the ERC20 token used for payment (either USDC or WBTC).
+     * @param paymentAmount Amount of USDC or WBTC to spend on purchasing FYRE.
+     */
+    function purchaseFYRE(address paymentToken, uint256 paymentAmount) external {
+        require(paymentToken == address(usdcToken) || paymentToken == address(wbtcToken), "Invalid payment token");
+
+        // Get the FYRE price in terms of the payment token from the oracle
+        uint256 fyrePrice = priceOracle.getPrice(address(fyreToken), paymentToken);
+        require(fyrePrice > 0, "FYRE price not available");
+
+        // Calculate the amount of FYRE the user will receive
+        uint256 fyreAmount = (paymentAmount * fyrePrice) / (10**18);
+
+        // Ensure the Treasury has enough FYRE to fulfill the purchase
+        require(fyreToken.balanceOf(address(this)) >= fyreAmount, "Insufficient FYRE balance in treasury");
+
+        // Transfer the payment token from the user to the Treasury
+        IERC20(paymentToken).transferFrom(msg.sender, address(this), paymentAmount);
+
+        // Transfer FYRE to the buyer
+        fyreToken.transfer(msg.sender, fyreAmount);
+
+        // Emit an event for tracking
+        emit FYREPurchase(msg.sender, fyreAmount, "Direct Purchase");
+    }
+
+
+    /**
      * @dev Converts ERC20 manaToken to ERC1400 MANA in "labor contribution" partition.
      */
     function convertManaToMANA(uint256 amount) external {
@@ -120,20 +149,59 @@ contract Treasury is Ownable {
         emit MANAConversion(msg.sender, amount);
     }
 
-    /**
-     * @dev Purchase MANA in the financial partition using FYRE.
-     */
-    function purchaseMANAInFinancialPartition(uint256 fyreAmount) external {
-        uint256 manaFinancialPrice = priceOracle.getPrice(address(manaToken), keccak256("financial contribution"));
-        uint256 fyreToManaRate = priceOracle.getPrice(address(fyreToken), "");
+/**
+ * @dev Allows purchase of MANA in financial partition, ensuring sufficient collateral.
+ * @param fyreAmount Amount of FYRE tokens to be used for purchasing MANA.
+ */
+function purchaseMANAInFinancialPartition(uint256 fyreAmount) external {
+    uint256 manaFinancialPrice = priceOracle.getPrice(address(manaToken), keccak256("financial contribution"));
+    uint256 fyreToManaRate = priceOracle.getPrice(address(fyreToken), "");
 
-        uint256 manaAmount = (fyreAmount * fyreToManaRate) / manaFinancialPrice;
+    uint256 manaAmount = (fyreAmount * fyreToManaRate) / manaFinancialPrice;
+    
+    // Calculate required collateral amount for the new MANA issuance
+    uint256 requiredCollateral = calculateRequiredCollateral(manaAmount);
+    require(totalCollateralizedBTC >= requiredCollateral, "Insufficient collateral for MANA issuance");
 
-        require(fyreToken.balanceOf(msg.sender) >= fyreAmount, "Insufficient FYRE balance");
-        fyreToken.transferFrom(msg.sender, address(this), fyreAmount);
-        manaToken.mint(msg.sender, manaAmount, keccak256("financial contribution"));
-        emit MANAConversion(msg.sender, fyreAmount, manaAmount);
-    }
+    // Update collateralized BTC balance
+    totalCollateralizedBTC -= requiredCollateral;
 
-    receive() external payable {}
+    require(fyreToken.balanceOf(msg.sender) >= fyreAmount, "Insufficient FYRE balance");
+    fyreToken.transferFrom(msg.sender, address(this), fyreAmount);
+    manaToken.mint(msg.sender, manaAmount, keccak256("financial contribution"));
+    
+    emit MANAConversion(msg.sender, fyreAmount, manaAmount);
+}
+
+// Tracks total BTC collateral available for MANA issuance
+uint256 public totalCollateralizedBTC;
+
+// Event for tracking collateral updates
+event CollateralUpdated(uint256 totalCollateral, string message);
+
+/**
+ * @dev Verifies and updates collateral for MANA issuance, only allowing minting if collateralized.
+ * @param collateralAmount The amount of BTC collateral required.
+ * @param signature Signed message verifying collateral status.
+ */
+function verifyAndUpdateCollateral(uint256 collateralAmount, bytes memory signature) external onlyOwner {
+    require(
+        verifyCollateral(collateralAmount, signature),
+        "Invalid collateral verification"
+    );
+    totalCollateralizedBTC += collateralAmount;
+    emit CollateralUpdated(totalCollateralizedBTC, "BTC Collateral Added for MANA");
+}
+
+
+
+/**
+ * @dev Calculates required collateral for a given amount of MANA.
+ * This would be based on a predefined collateralization ratio.
+ * @param manaAmount Amount of MANA tokens to be issued.
+ * @return uint256 Amount of BTC collateral required for the issuance.
+ */
+function calculateRequiredCollateral(uint256 manaAmount) internal view returns (uint256) {
+    uint256 collateralRatio = 150; // Define collateralization ratio, e.g., 150%
+    return (manaAmount * collateralRatio) / 100;
 }
