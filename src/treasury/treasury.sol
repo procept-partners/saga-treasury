@@ -15,6 +15,7 @@ contract Treasury is Ownable {
     MANA public manaToken;
     IERC20 public usdcToken;
     IERC20 public wbtcToken;
+    IERC20 public tbtcToken;
     IPriceOracle public priceOracle;  // Retained for price data
     address public authorizedGovernanceSigner;
     address public authorizedCollateralSigner;
@@ -39,6 +40,7 @@ contract Treasury is Ownable {
         MANA _manaToken,
         IERC20 _usdcToken,
         IERC20 _wbtcToken,
+        IERC20 _tbtcToken, 
         address _priceOracle,
         address _authorizedGovernanceSigner,
         address _authorizedCollateralSigner
@@ -47,6 +49,7 @@ contract Treasury is Ownable {
         manaToken = _manaToken;
         usdcToken = _usdcToken;
         wbtcToken = _wbtcToken;
+        tbtcToken = _tbtcToken; 
         priceOracle = IPriceOracle(_priceOracle);
         authorizedGovernanceSigner = _authorizedGovernanceSigner;
         authorizedCollateralSigner = _authorizedCollateralSigner;
@@ -120,32 +123,50 @@ contract Treasury is Ownable {
     }
 
     /**
-     * @dev Allows users to purchase FYRE from the Treasury using USDC or WBTC.
-     * @param paymentToken Address of the ERC20 token used for payment (either USDC or WBTC).
-     * @param paymentAmount Amount of USDC or WBTC to spend on purchasing FYRE.
-     */
-    function purchaseFYRE(address paymentToken, uint256 paymentAmount) external {
-        require(paymentToken == address(usdcToken) || paymentToken == address(wbtcToken), "Invalid payment token");
+    * @dev Allows users to purchase FYRE from the Treasury using USDC, WBTC, tBTC, or ETH.
+    * @param paymentToken Address of the ERC20 token used for payment (either USDC, WBTC, tBTC) or address(0) for ETH.
+    * @param paymentAmount Amount of ERC20 token or ETH to spend on purchasing FYRE.
+    */
+    function purchaseFYRE(address paymentToken, uint256 paymentAmount) external payable {
+        uint256 fyreAmount;
 
-        // Get the FYRE price in terms of the payment token from the oracle
-        uint256 fyrePrice = priceOracle.getPrice(address(fyreToken), paymentToken);
-        require(fyrePrice > 0, "FYRE price not available");
+        // Check if payment is in ETH
+        if (paymentToken == address(0)) {  // Using address(0) to represent ETH
+            require(msg.value == paymentAmount, "ETH amount mismatch");
+            uint256 fyrePriceInETH = priceOracle.getPrice(address(fyreToken), address(0));
+            require(fyrePriceInETH > 0, "FYRE price in ETH not available");
+            fyreAmount = (paymentAmount * fyrePriceInETH) / (10**18);
+        } else {
+            // For ERC20 tokens: USDC, WBTC, or tBTC
+            require(
+                paymentToken == address(usdcToken) || 
+                paymentToken == address(wbtcToken) || 
+                paymentToken == address(tbtcToken), 
+                "Invalid payment token"
+            );
 
-        // Calculate the amount of FYRE the user will receive
-        uint256 fyreAmount = (paymentAmount * fyrePrice) / (10**18);
+            // Get the FYRE price in terms of the payment token from the oracle
+            uint256 fyrePrice = priceOracle.getPrice(address(fyreToken), paymentToken);
+            require(fyrePrice > 0, "FYRE price not available");
+
+            // Calculate the amount of FYRE the user will receive
+            fyreAmount = (paymentAmount * fyrePrice) / (10**18);
+
+            // Transfer the payment token from the user to the Treasury
+            IERC20(paymentToken).transferFrom(msg.sender, address(this), paymentAmount);
+        }
 
         // Ensure the Treasury has enough FYRE to fulfill the purchase
         require(fyreToken.balanceOf(address(this)) >= fyreAmount, "Insufficient FYRE balance in treasury");
-
-        // Transfer the payment token from the user to the Treasury
-        IERC20(paymentToken).transferFrom(msg.sender, address(this), paymentAmount);
 
         // Transfer FYRE to the buyer
         fyreToken.transfer(msg.sender, fyreAmount);
 
         // Emit an event for tracking
-        emit FYREPurchase(msg.sender, fyreAmount, "Direct Purchase");
+        emit FYREPurchase(msg.sender, fyreAmount, paymentToken == address(0) ? "ETH Purchase" : "ERC20 Purchase");
     }
+
+
 
 
     /**
@@ -247,4 +268,8 @@ function calculateRequiredFyreCollateral(uint256 fyreAmount) internal view retur
     uint256 collateralRatio = 150; // Define collateralization ratio for FYRE, e.g., 150%
     return (fyreAmount * collateralRatio) / 100;
 }
+
+// Allows the contract to accept ETH
+receive() external payable {}
+
 
