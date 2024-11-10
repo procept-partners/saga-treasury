@@ -85,17 +85,26 @@ contract Treasury is Ownable {
             "Invalid signature from governance"
         );
 
+        // FYRE collateralization check and issuance
         if (approvedFYREQuantity > 0) {
+            uint256 requiredCollateralFYRE = calculateRequiredFyreCollateral(approvedFYREQuantity);
+            require(totalFyreCollateralBTC >= requiredCollateralFYRE, "Insufficient collateral for FYRE issuance");
+            totalFyreCollateralBTC -= requiredCollateralFYRE; // Deduct used collateral
             fyreToken.mint(address(this), approvedFYREQuantity);
             emit FYREPurchase(address(this), approvedFYREQuantity, "Governance Approved Mint");
         }
 
+        // MANA collateralization check and issuance
         if (approvedManaQuantity > 0) {
+            uint256 requiredCollateralMANA = calculateRequiredManaCollateral(approvedManaQuantity);
+            require(totalManaCollateralBTC >= requiredCollateralMANA, "Insufficient collateral for MANA issuance");
+            totalManaCollateralBTC -= requiredCollateralMANA;
             manaToken.mint(address(this), approvedManaQuantity);
         }
 
         emit ProjectApprovalReceived(projectId, approvedFYREQuantity, approvedManaQuantity);
     }
+
 
     /**
      * @dev Verifies collateral with a signature from the authorized collateral signer.
@@ -160,11 +169,11 @@ function purchaseMANAInFinancialPartition(uint256 fyreAmount) external {
     uint256 manaAmount = (fyreAmount * fyreToManaRate) / manaFinancialPrice;
     
     // Calculate required collateral amount for the new MANA issuance
-    uint256 requiredCollateral = calculateRequiredCollateral(manaAmount);
-    require(totalCollateralizedBTC >= requiredCollateral, "Insufficient collateral for MANA issuance");
+    uint256 requiredCollateral = calculateRequiredManaCollateral(manaAmount);
+    require(totalManaCollateralBTC >= requiredCollateral, "Insufficient collateral for MANA issuance");
 
     // Update collateralized BTC balance
-    totalCollateralizedBTC -= requiredCollateral;
+    totalManaCollateralBTC -= requiredCollateral;
 
     require(fyreToken.balanceOf(msg.sender) >= fyreAmount, "Insufficient FYRE balance");
     fyreToken.transferFrom(msg.sender, address(this), fyreAmount);
@@ -174,24 +183,46 @@ function purchaseMANAInFinancialPartition(uint256 fyreAmount) external {
 }
 
 // Tracks total BTC collateral available for MANA issuance
-uint256 public totalCollateralizedBTC;
+uint256 public totalManaCollateralBTC;
 
 // Event for tracking collateral updates
 event CollateralUpdated(uint256 totalCollateral, string message);
+
+uint256 public totalFyreCollateralBTC; // Track total BTC collateral available for FYRE issuance
+
+// Event for tracking FYRE collateral updates
+event FYRECollateralUpdated(uint256 totalCollateral, string message);
+
+
 
 /**
  * @dev Verifies and updates collateral for MANA issuance, only allowing minting if collateralized.
  * @param collateralAmount The amount of BTC collateral required.
  * @param signature Signed message verifying collateral status.
  */
-function verifyAndUpdateCollateral(uint256 collateralAmount, bytes memory signature) external onlyOwner {
+function addManaCollateralBTC(uint256 collateralAmount, bytes memory signature) external onlyOwner {
     require(
         verifyCollateral(collateralAmount, signature),
         "Invalid collateral verification"
     );
-    totalCollateralizedBTC += collateralAmount;
-    emit CollateralUpdated(totalCollateralizedBTC, "BTC Collateral Added for MANA");
+    totalManaCollateralBTC += collateralAmount;
+    emit CollateralUpdated(totalManaCollateralBTC, "BTC Collateral Added for MANA");
 }
+
+/**
+ * @dev Verifies and updates collateral for FYRE issuance, only allowing minting if collateralized.
+ * @param collateralAmount The amount of BTC collateral required for FYRE.
+ * @param signature Signed message verifying collateral status.
+ */
+function addFyreCollateralBTC(uint256 collateralAmount, bytes memory signature) external onlyOwner {
+    require(
+        verifyCollateral(collateralAmount, signature),
+        "Invalid collateral verification for FYRE"
+    );
+    totalFyreCollateralBTC += collateralAmount;
+    emit FYRECollateralUpdated(totalFyreCollateralBTC, "BTC Collateral Added for FYRE");
+}
+
 
 
 
@@ -201,7 +232,19 @@ function verifyAndUpdateCollateral(uint256 collateralAmount, bytes memory signat
  * @param manaAmount Amount of MANA tokens to be issued.
  * @return uint256 Amount of BTC collateral required for the issuance.
  */
-function calculateRequiredCollateral(uint256 manaAmount) internal view returns (uint256) {
+function calculateRequiredManaCollateral(uint256 manaAmount) internal view returns (uint256) {
     uint256 collateralRatio = 150; // Define collateralization ratio, e.g., 150%
     return (manaAmount * collateralRatio) / 100;
 }
+
+/**
+ * @dev Calculates required collateral for a given amount of FYRE.
+ * This would be based on a predefined collateralization ratio for FYRE.
+ * @param fyreAmount Amount of FYRE tokens to be issued.
+ * @return uint256 Amount of BTC collateral required for the issuance.
+ */
+function calculateRequiredFyreCollateral(uint256 fyreAmount) internal view returns (uint256) {
+    uint256 collateralRatio = 150; // Define collateralization ratio for FYRE, e.g., 150%
+    return (fyreAmount * collateralRatio) / 100;
+}
+
