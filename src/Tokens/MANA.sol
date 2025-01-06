@@ -2,7 +2,7 @@
 pragma solidity ^0.8.0;
 
 import {ERC1400} from "./ERC1400/ERC1400.sol"; // Import the ERC1400
-import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
+import {Math} from "lib/openzeppelin-contracts/contracts/utils/math/Math.sol";
 
 contract MANA is ERC1400 {
     using Math for uint256;

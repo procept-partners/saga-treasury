@@ -2,8 +2,8 @@
 pragma solidity ^0.8.0;
 
 import {Math} from "lib/openzeppelin-contracts/contracts/utils/math/Math.sol";
-import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {Ownable} from "lib/openzeppelin-contracts/contracts/access/Ownable.sol";
+import {IERC20} from "lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 
 contract ERC1400 is IERC20, Ownable {
     using Math for uint256;
