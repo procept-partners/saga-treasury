@@ -3,9 +3,11 @@ pragma solidity ^0.8.19;
 
 import {FYREToken} from "src/Tokens/FYREToken.sol";
 import {MANA} from "src/Tokens/MANA.sol";
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
-import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
+import {IERC20} from "lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
+import {Ownable} from "lib/openzeppelin-contracts/contracts/access/Ownable.sol";
+import {ECDSA} from "lib/openzeppelin-contracts/contracts/utils/cryptography/ECDSA.sol";
+import {MessageHashUtils} from "lib/openzeppelin-contracts/contracts/utils/cryptography/MessageHashUtils.sol";
+
 
 contract Treasury is Ownable {
     using ECDSA for bytes32;
@@ -165,7 +167,8 @@ contract Treasury is Ownable {
             abi.encodePacked(nearAccountId, " owns SHLD token ", tokenHash)
         );
 
-        bytes32 ethSignedMessageHash = messageHash.toEthSignedMessageHash();
+        bytes32 ethSignedMessageHash = MessageHashUtils.toEthSignedMessageHash(messageHash);
+
         address recoveredSigner = ethSignedMessageHash.recover(signature);
         require(recoveredSigner == authorizedSigner, "Invalid signature");
 
